@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise ZTA Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #050505;
+            --panel-bg: rgba(20, 24, 39, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.1);
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --safe-color: #0ea5e9; /* Cyber Blue */
+            --attack-color: #f43f5e; /* Neon Red */
+            --block-color: #f59e0b; /* Warning Orange */
+            --line-color: #334155;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            /* Blueprint Grid Background */
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Glassmorphism Sidebar */
+        .sidebar {
+            width: 340px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-right: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            padding: 25px;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .header-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            margin: 0 0 5px 0;
+            background: linear-gradient(90deg, #0ea5e9, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 8px;
+        }
+
+        /* Modern Toggles */
+        .control-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid var(--panel-border);
+        }
+        .control-group span { font-weight: 600; font-size: 0.9rem; }
+
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--safe-color); box-shadow: 0 0 10px rgba(14, 165, 233, 0.5); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Cyber Buttons */
+        .btn-attack {
+            background: rgba(244, 63, 94, 0.1);
+            color: var(--attack-color);
+            border: 1px solid var(--attack-color);
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+        .btn-attack:hover { background: var(--attack-color); color: white; box-shadow: 0 0 15px rgba(244, 63, 94, 0.4); }
+
+        .btn-reset {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--panel-border);
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+        .btn-reset:hover { background: rgba(255,255,255,0.05); color: white; }
+
+        /* Terminal Log Panel */
+        .terminal-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+            background: #000;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            overflow: hidden;
+        }
+        .terminal-header {
+            background: #111827;
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #374151; }
+        .dot.active { background: var(--safe-color); box-shadow: 0 0 5px var(--safe-color); }
+        
+        #log-panel {
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.75rem;
+            overflow-y: auto;
+            flex-grow: 1;
+            line-height: 1.5;
+        }
+
+        /* Network Map Area */
+        .network-map {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* SVG Lines */
+        #connections {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        line {
+            stroke: var(--line-color);
+            stroke-width: 2;
+            stroke-dasharray: 6;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash { to { stroke-dashoffset: -1000; } }
+
+        /* Nodes */
+        .node {
+            width: 110px;
+            height: 110px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 2px solid var(--line-color);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            z-index: 2;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(4px);
+        }
+
+        .icon { font-size: 2rem; margin-bottom: 8px; }
+        .node-label { font-size: 0.75rem; font-weight: 600; text-align: center; color: var(--text-muted); }
+
+        /* Node States */
+        .node.safe { 
+            border-color: var(--safe-color); 
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.2), inset 0 0 10px rgba(14, 165, 233, 0.1); 
+        }
+        .node.safe .node-label { color: var(--safe-color); }
+
+        .node.attacked { 
+            border-color: var(--attack-color); 
+            animation: pulse-red 1.5s infinite; 
+        }
+        .node.attacked .node-label { color: var(--attack-color); }
+
+        .node.blocked { 
+            border-color: var(--block-color); 
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.3), inset 0 0 15px rgba(245, 158, 11, 0.2); 
+        }
+        .node.blocked .node-label { color: var(--block-color); }
+
+        /* Fixed Positions using Percentages */
+        #node-external { top: 50%; left: 15%; transform: translate(-50%, -50%); }
+        #node-gateway { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        #node-db { top: 25%; left: 85%; transform: translate(-50%, -50%); }
+        #node-internal { top: 75%; left: 85%; transform: translate(-50%, -50%); }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.7), inset 0 0 15px rgba(244, 63, 94, 0.4); }
+            70% { box-shadow: 0 0 0 20px rgba(244, 63, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0); }
+        }
+
+        /* Scrollbar styling for log */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar Controls -->
+    <div class="sidebar">
+        <div>
+            <h1 class="header-title">ZTA Dashboard</h1>
+            <div class="header-subtitle">Network Security Topology</div>
+        </div>
+
+        <div>
+            <div class="section-title">Security Policies</div>
+            <div class="control-group">
+                <span>Identity / MFA</span>
+                <label class="switch">
+                    <input type="checkbox" id="policy-mfa">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="control-group">
+                <span>Micro-segmentation</span>
+                <label class="switch">
+                    <input type="checkbox" id="policy-micro">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div class="section-title">Threat Intelligence</div>
+            <button class="btn-attack" onclick="simulateAttack()">Execute SQL Injection</button>
+            <button class="btn-reset" onclick="resetNetwork()">Restore Steady State</button>
+        </div>
+
+        <div class="terminal-container">
+            <div class="terminal-header">
+                <div class="dot active"></div>
+                <span>SIEM Event Monitor</span>
+            </div>
+            <div id="log-panel">
+                <span style="color: #64748b;">> Initialization complete. Monitoring traffic...</span><br>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Visualization Map -->
+    <div class="network-map" id="map">
+        <!-- SVG Lines connecting the nodes -->
+        <svg id="connections">
+            <!-- External to Gateway -->
+            <line x1="15%" y1="50%" x2="50%" y2="50%" id="line-1" />
+            <!-- Gateway to DB -->
+            <line x1="50%" y1="50%" x2="85%" y2="25%" id="line-2" />
+            <!-- Gateway to Internal -->
+            <line x1="50%" y1="50%" x2="85%" y2="75%" id="line-3" />
+        </svg>
+
+        <!-- Nodes -->
+        <div class="node safe" id="node-external">
+            <div class="icon">💻</div>
+            <div class="node-label">Public Client</div>
+        </div>
+        <div class="node safe" id="node-gateway">
+            <div class="icon">🛡️</div>
+            <div class="node-label">API Gateway</div>
+        </div>
+        <div class="node safe" id="node-db">
+            <div class="icon">🗄️</div>
+            <div class="node-label">Core Database</div>
+        </div>
+        <div class="node safe" id="node-internal">
+            <div class="icon">⚙️</div>
+            <div class="node-label">Internal App</div>
+        </div>
+    </div>
+
+    <script>
+        function logEvent(message, type = 'info') {
+            const logPanel = document.getElementById('log-panel');
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
+            
+            let color = '#94a3b8'; // default grey
+            if (type === 'alert') color = '#f43f5e'; // red
+            if (type === 'success') color = '#0ea5e9'; // blue
+            if (type === 'warning') color = '#f59e0b'; // orange
+
+            const logEntry = `<span style="color: ${color}">[${time}] ${message}</span><br>`;
+            logPanel.innerHTML += logEntry;
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function setLineState(lineId, state) {
+            const line = document.getElementById(lineId);
+            if (state === 'attack') line.style.stroke = 'var(--attack-color)';
+            else if (state === 'safe') line.style.stroke = 'var(--line-color)';
+        }
+
+        function simulateAttack() {
+            logEvent("CRITICAL: Unauthorized payload detected from Public Client.", "alert");
+            
+            const external = document.getElementById('node-external');
+            const gateway = document.getElementById('node-gateway');
+            const db = document.getElementById('node-db');
+
+            const mfaActive = document.getElementById('policy-mfa').checked;
+            const microActive = document.getElementById('policy-micro').checked;
+
+            // Attack begins
+            external.className = 'node attacked';
+            setLineState('line-1', 'attack');
+            
+            setTimeout(() => {
+                if (!mfaActive) {
+                    logEvent("ALERT: API Gateway compromised. Authentication bypassed.", "alert");
+                    gateway.className = 'node attacked';
+                    setLineState('line-2', 'attack');
+                    
+                    setTimeout(() => {
+                        if (!microActive) {
+                            logEvent("FATAL: Lateral movement successful. Database breached.", "alert");
+                            db.className = 'node attacked';
+                        } else {
+                            logEvent("DEFENDED: Micro-segmentation isolated the threat. Database secure.", "warning");
+                            db.className = 'node blocked';
+                            setLineState('line-2', 'safe');
+                        }
+                    }, 1200);
+
+                } else {
+                    logEvent("DEFENDED: Request blocked by MFA policy. Payload dropped.", "warning");
+                    gateway.className = 'node blocked';
+                    setLineState('line-1', 'safe');
+                }
+            }, 1200);
+        }
+
+        function resetNetwork() {
+            const nodes = document.querySelectorAll('.node');
+            nodes.forEach(node => node.className = 'node safe');
+            
+            setLineState('line-1', 'safe');
+            setLineState('line-2', 'safe');
+            setLineState('line-3', 'safe');
+
+            logEvent("System state restored. Resuming normal operations.", "success");
+        }
+    </script>
+</body>
+</html>
